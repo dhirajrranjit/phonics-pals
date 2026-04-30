@@ -1,0 +1,24 @@
+{
+  "name": "phonics-pals",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A delightful phonics learning game for 4-year-olds — sound first, letters later.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "framer-motion": "^11.3.19",
+    "howler": "^2.2.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.1"
+  }
+}

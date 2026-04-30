@@ -1,0 +1,406 @@
+/* ============================================
+   Phonics Pals — Global Styles
+   A playful, high-contrast, toy-like aesthetic
+   designed for 4-year-old hands and eyes.
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Bowlby+One&display=swap');
+
+:root {
+  /* Joyful primary palette */
+  --bg-1: #FFE66D;
+  --bg-2: #FF8FA3;
+  --bg-3: #6BCBFF;
+  --bg-4: #B5F2A0;
+
+  --sun:    #FFD93D;
+  --berry:  #FF5E5B;
+  --sky:    #4ECDC4;
+  --grass:  #A8E063;
+  --grape:  #B388EB;
+  --ink:    #2B2D42;
+  --cream:  #FFF8E7;
+
+  --shadow-soft: 0 8px 0 rgba(43, 45, 66, 0.18);
+  --shadow-deep: 0 14px 0 rgba(43, 45, 66, 0.22);
+
+  --font-display: 'Bowlby One', 'Fredoka', system-ui, sans-serif;
+  --font-body:    'Fredoka', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 12% 18%, var(--bg-1) 0%, transparent 38%),
+    radial-gradient(circle at 88% 22%, var(--bg-2) 0%, transparent 42%),
+    radial-gradient(circle at 18% 88%, var(--bg-3) 0%, transparent 40%),
+    radial-gradient(circle at 82% 82%, var(--bg-4) 0%, transparent 38%),
+    #FFF8E7;
+  background-attachment: fixed;
+  touch-action: manipulation;
+}
+
+/* Decorative floating shapes layer */
+.bg-shapes {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.bg-shapes .blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(2px);
+  opacity: 0.55;
+}
+
+/* ============================================
+   App Layout
+   ============================================ */
+
+.app {
+  position: relative;
+  z-index: 1;
+  height: 100dvh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(12px, 2.5vh, 24px) clamp(12px, 3vw, 32px);
+}
+
+/* ============================================
+   Top Bar — score, progress dots, replay
+   ============================================ */
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.score-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--cream);
+  border: 4px solid var(--ink);
+  border-radius: 999px;
+  padding: 8px 18px 8px 12px;
+  font-family: var(--font-display);
+  font-size: clamp(18px, 2.4vh, 24px);
+  box-shadow: var(--shadow-soft);
+}
+
+.score-badge .star {
+  font-size: 1.3em;
+  filter: drop-shadow(0 2px 0 rgba(0,0,0,0.15));
+}
+
+.progress-dots {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.progress-dots .dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(43, 45, 66, 0.18);
+  border: 2px solid var(--ink);
+  transition: all 0.3s ease;
+}
+
+.progress-dots .dot.done {
+  background: var(--grass);
+  transform: scale(1.15);
+}
+
+.progress-dots .dot.current {
+  background: var(--sun);
+  box-shadow: 0 0 0 4px rgba(255, 217, 61, 0.35);
+  transform: scale(1.25);
+}
+
+.replay-btn {
+  display: grid;
+  place-items: center;
+  width: clamp(56px, 8vh, 72px);
+  height: clamp(56px, 8vh, 72px);
+  border-radius: 50%;
+  background: var(--sky);
+  border: 4px solid var(--ink);
+  cursor: pointer;
+  font-size: clamp(28px, 4vh, 36px);
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.1s ease;
+}
+
+.replay-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 4px 0 rgba(43, 45, 66, 0.18);
+}
+
+/* ============================================
+   Main Game Stage
+   ============================================ */
+
+.stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+  gap: clamp(12px, 2vh, 24px);
+  min-height: 0;
+  padding: clamp(8px, 1.5vh, 16px) 0;
+}
+
+/* ============================================
+   Image Card
+   ============================================ */
+
+.image-card {
+  position: relative;
+  width: clamp(220px, 38vh, 360px);
+  height: clamp(220px, 38vh, 360px);
+  display: grid;
+  place-items: center;
+  background: var(--cream);
+  border: 6px solid var(--ink);
+  border-radius: 36px;
+  box-shadow: var(--shadow-deep);
+  overflow: hidden;
+}
+
+.image-card::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.6), transparent 50%),
+    linear-gradient(135deg, rgba(255, 217, 61, 0.18), rgba(78, 205, 196, 0.18));
+  pointer-events: none;
+}
+
+.image-card .pic {
+  font-size: clamp(120px, 22vh, 200px);
+  line-height: 1;
+  z-index: 1;
+  filter: drop-shadow(0 6px 0 rgba(43, 45, 66, 0.18));
+}
+
+.image-card .pic img {
+  max-width: 80%;
+  max-height: 80%;
+  object-fit: contain;
+}
+
+.image-card .sparkle {
+  position: absolute;
+  font-size: 32px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ============================================
+   Letter Buttons Row
+   ============================================ */
+
+.letters {
+  display: flex;
+  gap: clamp(12px, 2.5vw, 24px);
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  flex-wrap: nowrap;
+}
+
+.letter-btn {
+  flex: 1 1 0;
+  max-width: 180px;
+  min-width: 0;
+  aspect-ratio: 1 / 1;
+  max-height: clamp(120px, 22vh, 180px);
+  display: grid;
+  place-items: center;
+  border: 6px solid var(--ink);
+  border-radius: 28px;
+  font-family: var(--font-display);
+  font-size: clamp(56px, 12vh, 96px);
+  color: var(--cream);
+  text-shadow: 0 4px 0 rgba(0,0,0,0.18);
+  cursor: pointer;
+  background: var(--berry);
+  box-shadow: var(--shadow-deep);
+  transition: filter 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.letter-btn::after {
+  content: '';
+  position: absolute;
+  top: 10%;
+  left: 12%;
+  width: 30%;
+  height: 18%;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  filter: blur(2px);
+}
+
+.letter-btn[data-color="0"] { background: var(--berry); }
+.letter-btn[data-color="1"] { background: var(--sky); }
+.letter-btn[data-color="2"] { background: var(--grape); }
+
+.letter-btn:disabled {
+  cursor: default;
+  filter: saturate(0.6) brightness(0.92);
+}
+
+.letter-btn.is-correct {
+  background: var(--grass) !important;
+  filter: none !important;
+}
+
+/* ============================================
+   Celebration overlay
+   ============================================ */
+
+.celebrate {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+  z-index: 10;
+}
+
+.celebrate .confetti {
+  position: absolute;
+  font-size: clamp(28px, 5vh, 48px);
+}
+
+/* ============================================
+   Start screen
+   ============================================ */
+
+.start-screen {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 20;
+  padding: 24px;
+}
+
+.start-card {
+  text-align: center;
+  background: var(--cream);
+  border: 6px solid var(--ink);
+  border-radius: 36px;
+  padding: clamp(24px, 4vh, 40px) clamp(28px, 6vw, 56px);
+  box-shadow: var(--shadow-deep);
+  max-width: 90vw;
+}
+
+.start-card h1 {
+  font-family: var(--font-display);
+  font-size: clamp(40px, 8vh, 72px);
+  margin: 0 0 8px;
+  color: var(--berry);
+  text-shadow: 0 6px 0 var(--sun);
+  letter-spacing: 1px;
+}
+
+.start-card .tagline {
+  font-size: clamp(18px, 2.6vh, 22px);
+  color: var(--ink);
+  margin: 0 0 24px;
+  font-weight: 600;
+}
+
+.start-btn {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 4.5vh, 40px);
+  padding: 18px 44px;
+  border: 6px solid var(--ink);
+  border-radius: 999px;
+  background: var(--grass);
+  color: var(--cream);
+  cursor: pointer;
+  box-shadow: var(--shadow-deep);
+  text-shadow: 0 3px 0 rgba(0,0,0,0.2);
+  letter-spacing: 1px;
+  transition: transform 0.1s ease;
+}
+
+.start-btn:active {
+  transform: translateY(4px);
+  box-shadow: var(--shadow-soft);
+}
+
+/* ============================================
+   End screen
+   ============================================ */
+
+.end-card .big-score {
+  font-family: var(--font-display);
+  font-size: clamp(80px, 14vh, 140px);
+  color: var(--berry);
+  text-shadow: 0 8px 0 var(--sun);
+  margin: 0;
+  line-height: 1;
+}
+
+.end-card .stars {
+  font-size: clamp(36px, 6vh, 56px);
+  margin: 8px 0 16px;
+  letter-spacing: 6px;
+}
+
+/* ============================================
+   Accessibility — respect reduced motion
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================
+   Landscape phone tweaks
+   ============================================ */
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .image-card {
+    width: clamp(160px, 50vh, 240px);
+    height: clamp(160px, 50vh, 240px);
+  }
+  .letter-btn {
+    max-height: clamp(80px, 30vh, 130px);
+  }
+}
