@@ -140,7 +140,7 @@ const LETTER_PATHS = {
 // ============================================================
 
 /** Sample points along all strokes of a letter for hit-testing. */
-function sampleLetterPoints(letter, density = 2) {
+function sampleLetterPoints(letter, density = 3) {
   const strokes = LETTER_PATHS[letter.toUpperCase()] || [];
   const points = [];
   for (const stroke of strokes) {
@@ -170,8 +170,8 @@ function dist(a, b) {
 // Component
 // ============================================================
 
-const HIT_RADIUS = 8; // how close (in 0-100 coords) the finger needs to be
-const COMPLETE_THRESHOLD = 0.70; // 70% coverage = done
+const HIT_RADIUS = 5.5; // how close (in 0-100 coords) the finger needs to be
+const COMPLETE_THRESHOLD = 0.85; // 85% coverage = done
 
 export default function LetterTracer({ letter, word, onComplete }) {
   const canvasRef = useRef(null);
