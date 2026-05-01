@@ -89,15 +89,15 @@ export function playPhonics(src, word) {
     h.play();
     // Howler may still fail on play — give it a moment, then check.
     setTimeout(() => {
-      if (failedSrcs.has(src)) sayWordTwice(word);
+      if (failedSrcs.has(src)) sayWordOnce(word);
     }, 60);
     return;
   }
-  sayWordTwice(word);
+  sayWordOnce(word);
 }
 
-/** Speak the word, pause, speak it again — emphasizing the initial sound. */
-function sayWordTwice(word) {
+/** Speak the word once, slowly and clearly — so the child hears the initial sound. */
+function sayWordOnce(word) {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
   ensureVoices();
   window.speechSynthesis.cancel();
@@ -105,20 +105,12 @@ function sayWordTwice(word) {
   const voices = window.speechSynthesis.getVoices();
   const enVoice = voices.find((v) => /en[-_]/i.test(v.lang)) || voices[0];
 
-  const makeUtter = (text, rate) => {
-    const u = new SpeechSynthesisUtterance(text);
-    u.rate = rate;
-    u.pitch = 1.25;
-    u.volume = 1;
-    if (enVoice) u.voice = enVoice;
-    return u;
-  };
-
-  // First pass: clear and slightly slow, like a teacher modeling.
-  // Second pass: even slower, with extra emphasis on the first sound.
-  // The trailing comma adds a natural micro-pause before the repeat.
-  window.speechSynthesis.speak(makeUtter(`${word},`, 0.85));
-  window.speechSynthesis.speak(makeUtter(word, 0.75));
+  const u = new SpeechSynthesisUtterance(word);
+  u.rate = 0.75;
+  u.pitch = 1.25;
+  u.volume = 1;
+  if (enVoice) u.voice = enVoice;
+  window.speechSynthesis.speak(u);
 }
 
 /** Play a full-word audio. Speaks "<letter> is for <word>!" as fallback. */
