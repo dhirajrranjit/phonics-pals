@@ -139,21 +139,32 @@ const LETTER_PATHS = {
 // Helpers
 // ============================================================
 
-/** Sample points along all strokes of a letter for hit-testing. */
-function sampleLetterPoints(letter, density = 3) {
+/**
+ * Sample points along all strokes.
+ * Each point also records which stroke it belongs to
+ * and its sequential index within that stroke.
+ * density = distance between points in 0-100 coords.
+ */
+function sampleLetterPoints(letter, density = 1.5) {
   const strokes = LETTER_PATHS[letter.toUpperCase()] || [];
   const points = [];
-  for (const stroke of strokes) {
+  for (let si = 0; si < strokes.length; si++) {
+    const stroke = strokes[si];
+    let strokePointIdx = 0;
     for (let i = 0; i < stroke.length - 1; i++) {
       const a = stroke[i];
       const b = stroke[i + 1];
-      const dist = Math.hypot(b.x - a.x, b.y - a.y);
-      const steps = Math.max(1, Math.round(dist / density));
+      const segDist = Math.hypot(b.x - a.x, b.y - a.y);
+      const steps = Math.max(1, Math.round(segDist / density));
       for (let s = 0; s <= steps; s++) {
+        // Avoid duplicate at segment junctions
+        if (s === 0 && i > 0) continue;
         const t = s / steps;
         points.push({
           x: a.x + (b.x - a.x) * t,
           y: a.y + (b.y - a.y) * t,
+          stroke: si,
+          idx: strokePointIdx++,
         });
       }
     }
@@ -166,18 +177,54 @@ function dist(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+/**
+ * Divide sample points into checkpoints — evenly spaced "gates"
+ * along each stroke that must be reached in order.
+ * This prevents "spray" hits from counting and forces sequential tracing.
+ */
+function buildCheckpoints(samplePoints, gateSpacing = 6) {
+  const byStroke = {};
+  for (const pt of samplePoints) {
+    if (!byStroke[pt.stroke]) byStroke[pt.stroke] = [];
+    byStroke[pt.stroke].push(pt);
+  }
+  const checkpoints = [];
+  for (const strokeIdx of Object.keys(byStroke).sort((a, b) => a - b)) {
+    const pts = byStroke[strokeIdx];
+    let accumulated = 0;
+    checkpoints.push({ ...pts[0], cpIdx: checkpoints.length }); // always include start
+    for (let i = 1; i < pts.length; i++) {
+      accumulated += dist(pts[i - 1], pts[i]);
+      if (accumulated >= gateSpacing) {
+        checkpoints.push({ ...pts[i], cpIdx: checkpoints.length });
+        accumulated = 0;
+      }
+    }
+    // Always include the last point of each stroke
+    const last = pts[pts.length - 1];
+    const lastCp = checkpoints[checkpoints.length - 1];
+    if (dist(last, lastCp) > 2) {
+      checkpoints.push({ ...last, cpIdx: checkpoints.length });
+    }
+  }
+  return checkpoints;
+}
+
 // ============================================================
 // Component
 // ============================================================
 
-const HIT_RADIUS = 5.5; // how close (in 0-100 coords) the finger needs to be
-const COMPLETE_THRESHOLD = 0.85; // 85% coverage = done
+const HIT_RADIUS = 4.5;          // how close finger must be (in 0-100 coords)
+const COMPLETE_THRESHOLD = 0.92;  // 92% of checkpoints must be reached
+const LOOKAHEAD = 3;              // how many checkpoints ahead the child can reach
 
 export default function LetterTracer({ letter, word, onComplete }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
-  const pointsRef = useRef([]);
-  const hitMapRef = useRef(new Set());
+  const samplePtsRef = useRef([]);
+  const checkpointsRef = useRef([]);
+  const reachedRef = useRef(new Set());
+  const nextCpRef = useRef(0);       // next checkpoint the child should reach
   const isDrawingRef = useRef(false);
   const [progress, setProgress] = useState(0);
   const [completed, setCompleted] = useState(false);
@@ -185,12 +232,16 @@ export default function LetterTracer({ letter, word, onComplete }) {
 
   const upperLetter = letter.toUpperCase();
 
-  // Calculate canvas size and sample points on mount / letter change.
+  // Set up on mount / letter change.
   useEffect(() => {
     setProgress(0);
     setCompleted(false);
-    hitMapRef.current = new Set();
-    pointsRef.current = sampleLetterPoints(upperLetter, 2);
+    reachedRef.current = new Set();
+    nextCpRef.current = 0;
+
+    const samples = sampleLetterPoints(upperLetter, 1.5);
+    samplePtsRef.current = samples;
+    checkpointsRef.current = buildCheckpoints(samples, 5);
 
     const updateSize = () => {
       if (containerRef.current) {
@@ -202,13 +253,12 @@ export default function LetterTracer({ letter, word, onComplete }) {
     updateSize();
     window.addEventListener('resize', updateSize);
 
-    // Voice prompt
     say(`Trace the letter ${upperLetter}!`, { rate: 0.9, pitch: 1.2 });
 
     return () => window.removeEventListener('resize', updateSize);
   }, [upperLetter]);
 
-  // Draw the guide + user strokes whenever progress updates.
+  // Redraw whenever progress changes.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -221,125 +271,129 @@ export default function LetterTracer({ letter, word, onComplete }) {
     canvas.style.width = `${size}px`;
     canvas.style.height = `${size}px`;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    // Clear
     ctx.clearRect(0, 0, size, size);
 
     const scale = size / 100;
     const strokes = LETTER_PATHS[upperLetter] || [];
+    const reached = reachedRef.current;
+    const checkpoints = checkpointsRef.current;
 
-    // 1) Draw dotted guide strokes (light gray)
+    // 1) Dotted guide path (light gray)
     ctx.save();
     ctx.strokeStyle = 'rgba(43, 45, 66, 0.18)';
-    ctx.lineWidth = Math.max(18, size * 0.06);
+    ctx.lineWidth = Math.max(22, size * 0.07);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.setLineDash([4, 12]);
+    ctx.setLineDash([3, 10]);
     for (const stroke of strokes) {
       ctx.beginPath();
       stroke.forEach((p, i) => {
-        const px = p.x * scale;
-        const py = p.y * scale;
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
+        if (i === 0) ctx.moveTo(p.x * scale, p.y * scale);
+        else ctx.lineTo(p.x * scale, p.y * scale);
       });
       ctx.stroke();
     }
     ctx.restore();
 
-    // 2) Draw solid path underneath where the user has traced
+    // 2) Green fill at reached checkpoints
     ctx.save();
-    ctx.strokeStyle = '#A8E063';
-    ctx.lineWidth = Math.max(20, size * 0.065);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.setLineDash([]);
-
-    const hitSet = hitMapRef.current;
-    const allPts = pointsRef.current;
-
-    // Draw small circles at every hit point for a "coloring in" feel
     ctx.fillStyle = '#A8E063';
-    for (const idx of hitSet) {
-      const pt = allPts[idx];
-      if (!pt) continue;
+    for (const cpIdx of reached) {
+      const cp = checkpoints[cpIdx];
+      if (!cp) continue;
       ctx.beginPath();
-      ctx.arc(pt.x * scale, pt.y * scale, Math.max(10, size * 0.032), 0, Math.PI * 2);
+      ctx.arc(cp.x * scale, cp.y * scale, Math.max(11, size * 0.035), 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
 
-    // 3) Draw solid letter outline on top of the green fill
+    // 3) Solid letter outline on top
     ctx.save();
-    ctx.strokeStyle = 'rgba(43, 45, 66, 0.35)';
-    ctx.lineWidth = Math.max(3, size * 0.008);
+    ctx.strokeStyle = 'rgba(43, 45, 66, 0.3)';
+    ctx.lineWidth = Math.max(2.5, size * 0.006);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.setLineDash([]);
     for (const stroke of strokes) {
       ctx.beginPath();
       stroke.forEach((p, i) => {
-        const px = p.x * scale;
-        const py = p.y * scale;
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
+        if (i === 0) ctx.moveTo(p.x * scale, p.y * scale);
+        else ctx.lineTo(p.x * scale, p.y * scale);
       });
       ctx.stroke();
     }
     ctx.restore();
 
-    // 4) Draw start dots (green circles at the beginning of each stroke)
-    if (hitSet.size === 0) {
-      ctx.save();
-      for (const stroke of strokes) {
-        const start = stroke[0];
-        ctx.fillStyle = '#4ECDC4';
-        ctx.beginPath();
-        ctx.arc(start.x * scale, start.y * scale, Math.max(12, size * 0.04), 0, Math.PI * 2);
-        ctx.fill();
-        // Arrow-like indicator
+    // 4) Show the NEXT checkpoint(s) the child should aim for
+    ctx.save();
+    const nextIdx = nextCpRef.current;
+    for (let look = 0; look < LOOKAHEAD; look++) {
+      const targetIdx = nextIdx + look;
+      if (targetIdx >= checkpoints.length || reached.has(targetIdx)) continue;
+      const cp = checkpoints[targetIdx];
+      const isImmediate = look === 0;
+      // Pulsing teal dot for the next target
+      ctx.fillStyle = isImmediate ? '#4ECDC4' : 'rgba(78, 205, 196, 0.35)';
+      ctx.beginPath();
+      const r = isImmediate ? Math.max(13, size * 0.042) : Math.max(8, size * 0.025);
+      ctx.arc(cp.x * scale, cp.y * scale, r, 0, Math.PI * 2);
+      ctx.fill();
+      if (isImmediate) {
+        // White inner dot
         ctx.fillStyle = '#FFF8E7';
-        ctx.font = `${Math.max(14, size * 0.045)}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('●', start.x * scale, start.y * scale);
+        ctx.beginPath();
+        ctx.arc(cp.x * scale, cp.y * scale, Math.max(5, size * 0.015), 0, Math.PI * 2);
+        ctx.fill();
       }
-      ctx.restore();
     }
+    ctx.restore();
   }, [progress, canvasSize, upperLetter]);
 
-  // Convert a pointer event to 0-100 coordinates.
-  const eventToCoord = useCallback(
-    (e) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return null;
-      const rect = canvas.getBoundingClientRect();
-      // Handle both touch and mouse events
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      return {
-        x: ((clientX - rect.left) / rect.width) * 100,
-        y: ((clientY - rect.top) / rect.height) * 100,
-      };
-    },
-    []
-  );
+  // Convert pointer to 0-100 coords.
+  const eventToCoord = useCallback((e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: ((clientX - rect.left) / rect.width) * 100,
+      y: ((clientY - rect.top) / rect.height) * 100,
+    };
+  }, []);
 
-  // Check which letter-path points the pointer is near and mark them hit.
+  /**
+   * Sequential checkpoint hit-testing.
+   * Only the NEXT few checkpoints (LOOKAHEAD) can be reached.
+   * This forces the child to trace in order along each stroke.
+   */
   const checkHits = useCallback(
     (coord) => {
       if (!coord || completed) return;
-      const allPts = pointsRef.current;
-      const hitSet = hitMapRef.current;
+      const checkpoints = checkpointsRef.current;
+      const reached = reachedRef.current;
       let changed = false;
-      for (let i = 0; i < allPts.length; i++) {
-        if (!hitSet.has(i) && dist(coord, allPts[i]) < HIT_RADIUS) {
-          hitSet.add(i);
+      let next = nextCpRef.current;
+
+      // Check the next few upcoming checkpoints
+      for (let look = 0; look < LOOKAHEAD; look++) {
+        const targetIdx = next + look;
+        if (targetIdx >= checkpoints.length) break;
+        if (reached.has(targetIdx)) continue;
+        const cp = checkpoints[targetIdx];
+        if (dist(coord, cp) < HIT_RADIUS) {
+          reached.add(targetIdx);
           changed = true;
+          // Advance the "next" pointer past all reached checkpoints
+          while (nextCpRef.current < checkpoints.length && reached.has(nextCpRef.current)) {
+            nextCpRef.current++;
+          }
+          next = nextCpRef.current;
+          break; // only hit one per move event for responsiveness
         }
       }
+
       if (changed) {
-        const pct = hitSet.size / allPts.length;
+        const pct = reached.size / checkpoints.length;
         setProgress(pct);
         if (pct >= COMPLETE_THRESHOLD && !completed) {
           setCompleted(true);
@@ -352,24 +406,17 @@ export default function LetterTracer({ letter, word, onComplete }) {
     [completed, upperLetter, onComplete]
   );
 
-  // --- Pointer handlers ---
-  const handleStart = useCallback(
-    (e) => {
-      e.preventDefault();
-      isDrawingRef.current = true;
-      checkHits(eventToCoord(e));
-    },
-    [eventToCoord, checkHits]
-  );
+  const handleStart = useCallback((e) => {
+    e.preventDefault();
+    isDrawingRef.current = true;
+    checkHits(eventToCoord(e));
+  }, [eventToCoord, checkHits]);
 
-  const handleMove = useCallback(
-    (e) => {
-      e.preventDefault();
-      if (!isDrawingRef.current) return;
-      checkHits(eventToCoord(e));
-    },
-    [eventToCoord, checkHits]
-  );
+  const handleMove = useCallback((e) => {
+    e.preventDefault();
+    if (!isDrawingRef.current) return;
+    checkHits(eventToCoord(e));
+  }, [eventToCoord, checkHits]);
 
   const handleEnd = useCallback((e) => {
     e.preventDefault();
@@ -381,7 +428,6 @@ export default function LetterTracer({ letter, word, onComplete }) {
     onComplete();
   }, [onComplete]);
 
-  // Progress ring values
   const ringRadius = 22;
   const ringCircumference = 2 * Math.PI * ringRadius;
   const ringOffset = ringCircumference * (1 - Math.min(progress / COMPLETE_THRESHOLD, 1));
