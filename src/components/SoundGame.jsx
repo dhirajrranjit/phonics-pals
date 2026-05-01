@@ -68,6 +68,7 @@ export default function SoundGame({ onFinish }) {
   const roundQueue = useMemo(() => buildRoundQueue(wordsData, TOTAL_ROUNDS), []);
   const [roundIdx, setRoundIdx] = useState(0);
   const [score, setScore] = useState(0);
+  const scoreRef = useRef(0);
   const [shakeLetter, setShakeLetter] = useState(null);
   const [revealCorrect, setRevealCorrect] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
@@ -138,7 +139,10 @@ export default function SoundGame({ onFinish }) {
         setLocked(true);
         setRevealCorrect(true);
         setCelebrate(true);
-        setScore((s) => s + 1);
+        setScore((s) => {
+          scoreRef.current = s + 1;
+          return s + 1;
+        });
         playSuccess();
         // Slight stagger so success chime plays before voice.
         addTimeout(() => {
@@ -148,7 +152,7 @@ export default function SoundGame({ onFinish }) {
         // Advance to next round after celebration.
         addTimeout(() => {
           if (roundIdx + 1 >= TOTAL_ROUNDS) {
-            onFinish({ score: score + 1, total: TOTAL_ROUNDS });
+            onFinish({ score: scoreRef.current, total: TOTAL_ROUNDS });
           } else {
             setRoundIdx((i) => i + 1);
           }

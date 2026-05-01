@@ -55,6 +55,7 @@ export default function BlendGame({ onFinish }) {
   const roundQueue = useMemo(() => buildBlendQueue(cvcWords, TOTAL_ROUNDS), []);
   const [roundIdx, setRoundIdx] = useState(0);
   const [score, setScore] = useState(0);
+  const scoreRef = useRef(0);
   const [highlightIdx, setHighlightIdx] = useState(-1);
   const [wordRevealed, setWordRevealed] = useState(false);
   const [showChoices, setShowChoices] = useState(false);
@@ -100,9 +101,8 @@ export default function BlendGame({ onFinish }) {
         current.target.word,
         (idx) => setHighlightIdx(idx),
         () => {
-          setWordRevealed(true);
-          // Show picture choices after the word is spoken
-          addTimeout(() => setShowChoices(true), 600);
+          // Show picture choices right after the blend finishes — no hint!
+          addTimeout(() => setShowChoices(true), 400);
         }
       );
     }, 500);
@@ -132,31 +132,32 @@ export default function BlendGame({ onFinish }) {
         // ✅ Correct!
         setLocked(true);
         setCelebrate(true);
-        setScore((s) => s + 1);
+        setWordRevealed(true);
+        setScore((s) => {
+          scoreRef.current = s + 1;
+          return s + 1;
+        });
         playSuccess();
         addTimeout(() => {
           say(`Yes! ${current.target.word}!`, { rate: 0.9, pitch: 1.25 });
         }, 400);
         addTimeout(() => {
           if (roundIdx + 1 >= TOTAL_ROUNDS) {
-            onFinish({ score: score + 1, total: TOTAL_ROUNDS });
+            onFinish({ score: scoreRef.current, total: TOTAL_ROUNDS });
           } else {
             setRoundIdx((i) => i + 1);
           }
         }, 2200);
       } else {
-        // ❌ Wrong
+        // ❌ Wrong — just shake, no replaying the whole blend.
+        // The choices stay visible so the child can try again.
         playOops();
         setShakePick(word);
         addTimeout(() => setShakePick(null), 600);
-        // Replay the blend so they can try again
-        addTimeout(() => {
-          playCurrentBlend();
-        }, 1000);
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [current, locked, roundIdx, score]
+    [current, locked, roundIdx]
   );
 
   if (!current) return null;

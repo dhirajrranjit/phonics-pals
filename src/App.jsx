@@ -16,6 +16,7 @@ export default function App() {
   const [showStickerBook, setShowStickerBook] = useState(false);
   const [awardedStickers, setAwardedStickers] = useState([]);
   const [collectedCount, setCollectedCount] = useState(getCollectedCount());
+  const [lastMode, setLastMode] = useState(SCREENS.PLAY); // tracks which game to replay
 
   // Decorative background blobs — generated once, slow-floating.
   const blobs = useMemo(
@@ -39,6 +40,7 @@ export default function App() {
     playTap();
     cancelSpeech();
     setAwardedStickers([]);
+    setLastMode(SCREENS.PLAY);
     setScreen(SCREENS.PLAY);
   };
 
@@ -46,6 +48,7 @@ export default function App() {
     playTap();
     cancelSpeech();
     setAwardedStickers([]);
+    setLastMode(SCREENS.BLEND);
     setScreen(SCREENS.BLEND);
   };
 
@@ -56,7 +59,6 @@ export default function App() {
     const newStickers = awardStickers(score, total);
     setAwardedStickers(newStickers);
     setCollectedCount(getCollectedCount());
-    setSessionCount(getSessionCount());
 
     setScreen(SCREENS.END);
     // Tiny delay so transition lands first
@@ -77,8 +79,8 @@ export default function App() {
     cancelSpeech();
     setAwardedStickers([]);
     setScreen(SCREENS.START);
-    // brief flash so React fully resets the SoundGame state next time
-    setTimeout(() => setScreen(SCREENS.PLAY), 50);
+    // brief flash so React fully resets the game state
+    setTimeout(() => setScreen(lastMode), 50);
   };
 
   const handleHome = () => {
