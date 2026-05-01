@@ -6,10 +6,9 @@ import BlendGame from './components/BlendGame.jsx';
 import StickerBook from './components/StickerBook.jsx';
 import StickerReveal from './components/StickerReveal.jsx';
 import { say, playTap, playFanfare, cancelSpeech } from './utils/audio.js';
-import { awardStickers, getCollectedCount, getSessionCount, TOTAL_STICKER_COUNT } from './utils/stickers.js';
+import { awardStickers, getCollectedCount, TOTAL_STICKER_COUNT } from './utils/stickers.js';
 
 const SCREENS = { START: 'start', PLAY: 'play', BLEND: 'blend', END: 'end' };
-const BLEND_UNLOCK_SESSIONS = 3; // sessions needed to unlock blending
 
 export default function App() {
   const [screen, setScreen] = useState(SCREENS.START);
@@ -17,8 +16,6 @@ export default function App() {
   const [showStickerBook, setShowStickerBook] = useState(false);
   const [awardedStickers, setAwardedStickers] = useState([]);
   const [collectedCount, setCollectedCount] = useState(getCollectedCount());
-  const [sessionCount, setSessionCount] = useState(getSessionCount());
-  const blendUnlocked = sessionCount >= BLEND_UNLOCK_SESSIONS;
 
   // Decorative background blobs — generated once, slow-floating.
   const blobs = useMemo(
@@ -82,6 +79,13 @@ export default function App() {
     setScreen(SCREENS.START);
     // brief flash so React fully resets the SoundGame state next time
     setTimeout(() => setScreen(SCREENS.PLAY), 50);
+  };
+
+  const handleHome = () => {
+    playTap();
+    cancelSpeech();
+    setAwardedStickers([]);
+    setScreen(SCREENS.START);
   };
 
   const handleOpenStickerBook = () => {
@@ -195,15 +199,12 @@ export default function App() {
               <motion.button
                 type="button"
                 className="start-blend-btn"
-                onClick={blendUnlocked ? handleStartBlend : undefined}
-                disabled={!blendUnlocked}
-                whileTap={blendUnlocked ? { scale: 0.93, y: 3 } : {}}
-                aria-label={blendUnlocked ? 'Play blending game' : `Blending unlocks after ${BLEND_UNLOCK_SESSIONS} games`}
-                title={blendUnlocked ? '' : `Play ${BLEND_UNLOCK_SESSIONS - sessionCount} more game${BLEND_UNLOCK_SESSIONS - sessionCount === 1 ? '' : 's'} to unlock`}
+                onClick={handleStartBlend}
+                whileTap={{ scale: 0.93, y: 3 }}
+                aria-label="Play blending game"
               >
-                {!blendUnlocked && <span className="lock-icon" aria-hidden="true">🔒</span>}
                 <span>BLEND</span>
-                {blendUnlocked && <span aria-hidden="true">🔤</span>}
+                <span aria-hidden="true">🔤</span>
               </motion.button>
 
               {/* Sticker book button */}
@@ -270,6 +271,18 @@ export default function App() {
               <StickerReveal stickers={awardedStickers} />
 
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <motion.button
+                  type="button"
+                  className="start-btn"
+                  onClick={handleHome}
+                  whileTap={{ scale: 0.92, y: 6 }}
+                  whileHover={{ scale: 1.04 }}
+                  aria-label="Go home"
+                  style={{ background: 'var(--sun)', color: 'var(--ink)' }}
+                >
+                  🏠
+                </motion.button>
+
                 <motion.button
                   type="button"
                   className="start-btn"
