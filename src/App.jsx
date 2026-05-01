@@ -2,13 +2,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SoundGame from './components/SoundGame.jsx';
+import StickerBook from './components/StickerBook.jsx';
+import StickerReveal from './components/StickerReveal.jsx';
 import { say, playTap, playFanfare, cancelSpeech } from './utils/audio.js';
+import { awardStickers, getCollectedCount, TOTAL_STICKER_COUNT } from './utils/stickers.js';
 
 const SCREENS = { START: 'start', PLAY: 'play', END: 'end' };
 
 export default function App() {
   const [screen, setScreen] = useState(SCREENS.START);
   const [result, setResult] = useState({ score: 0, total: 10 });
+  const [showStickerBook, setShowStickerBook] = useState(false);
+  const [awardedStickers, setAwardedStickers] = useState([]);
+  const [collectedCount, setCollectedCount] = useState(getCollectedCount());
 
   // Decorative background blobs — generated once, slow-floating.
   const blobs = useMemo(
@@ -31,11 +37,18 @@ export default function App() {
   const handleStart = () => {
     playTap();
     cancelSpeech();
+    setAwardedStickers([]);
     setScreen(SCREENS.PLAY);
   };
 
   const handleFinish = ({ score, total }) => {
     setResult({ score, total });
+
+    // Award stickers!
+    const newStickers = awardStickers(score, total);
+    setAwardedStickers(newStickers);
+    setCollectedCount(getCollectedCount());
+
     setScreen(SCREENS.END);
     // Tiny delay so transition lands first
     setTimeout(() => {
@@ -45,7 +58,7 @@ export default function App() {
           ? 'Wow! You got them all!'
           : score >= total * 0.7
           ? 'Awesome job!'
-          : 'Great try! Let’s play again!';
+          : 'Great try! Let\'s play again!';
       setTimeout(() => say(praise, { rate: 0.9, pitch: 1.2 }), 800);
     }, 200);
   };
@@ -53,9 +66,20 @@ export default function App() {
   const handleReplay = () => {
     playTap();
     cancelSpeech();
+    setAwardedStickers([]);
     setScreen(SCREENS.START);
     // brief flash so React fully resets the SoundGame state next time
     setTimeout(() => setScreen(SCREENS.PLAY), 50);
+  };
+
+  const handleOpenStickerBook = () => {
+    playTap();
+    setShowStickerBook(true);
+  };
+
+  const handleCloseStickerBook = () => {
+    setCollectedCount(getCollectedCount());
+    setShowStickerBook(false);
   };
 
   const stars = Math.max(1, Math.round((result.score / result.total) * 3));
@@ -108,7 +132,7 @@ export default function App() {
 
       {/* START SCREEN */}
       <AnimatePresence>
-        {screen === SCREENS.START && (
+        {screen === SCREENS.START && !showStickerBook && (
           <motion.div
             key="start"
             className="start-screen"
@@ -143,6 +167,19 @@ export default function App() {
               >
                 PLAY ▶
               </motion.button>
+
+              {/* Sticker book button */}
+              <motion.button
+                type="button"
+                className="start-sticker-btn"
+                onClick={handleOpenStickerBook}
+                whileTap={{ scale: 0.93, y: 3 }}
+                aria-label="Open sticker book"
+              >
+                <span aria-hidden="true">📖</span>
+                <span>Stickers</span>
+                <span className="btn-badge">{collectedCount}/{TOTAL_STICKER_COUNT}</span>
+              </motion.button>
             </motion.div>
           </motion.div>
         )}
@@ -150,7 +187,7 @@ export default function App() {
 
       {/* END SCREEN */}
       <AnimatePresence>
-        {screen === SCREENS.END && (
+        {screen === SCREENS.END && !showStickerBook && (
           <motion.div
             key="end"
             className="start-screen"
@@ -191,19 +228,46 @@ export default function App() {
                 ))}
               </div>
 
-              <motion.button
-                type="button"
-                className="start-btn"
-                onClick={handleReplay}
-                whileTap={{ scale: 0.92, y: 6 }}
-                whileHover={{ scale: 1.04 }}
-                aria-label="Play again"
-                style={{ background: 'var(--sky)' }}
-              >
-                AGAIN ↻
-              </motion.button>
+              {/* Sticker reveal */}
+              <StickerReveal stickers={awardedStickers} />
+
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <motion.button
+                  type="button"
+                  className="start-btn"
+                  onClick={handleReplay}
+                  whileTap={{ scale: 0.92, y: 6 }}
+                  whileHover={{ scale: 1.04 }}
+                  aria-label="Play again"
+                  style={{ background: 'var(--sky)' }}
+                >
+                  AGAIN ↻
+                </motion.button>
+
+                <motion.button
+                  type="button"
+                  className="start-sticker-btn"
+                  onClick={handleOpenStickerBook}
+                  whileTap={{ scale: 0.93, y: 3 }}
+                  aria-label="View sticker book"
+                  style={{ marginTop: 0 }}
+                >
+                  <span aria-hidden="true">📖</span>
+                  <span>Stickers</span>
+                </motion.button>
+              </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* STICKER BOOK */}
+      <AnimatePresence>
+        {showStickerBook && (
+          <StickerBook
+            key="sticker-book"
+            onClose={handleCloseStickerBook}
+          />
         )}
       </AnimatePresence>
     </>
