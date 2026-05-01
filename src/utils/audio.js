@@ -203,3 +203,43 @@ export function cancelSpeech() {
     window.speechSynthesis.cancel();
   }
 }
+
+/**
+ * Blend CVC sounds: speak each letter sound individually with pauses,
+ * then say the full word. Calls `onLetterHighlight(index)` as each
+ * letter is spoken so the UI can highlight them in sequence.
+ *
+ * Returns a cleanup function that cancels pending timeouts.
+ */
+export function playBlend(word, onLetterHighlight, onWordSpoken) {
+  cancelSpeech();
+  const letters = word.split('');
+  const timeouts = [];
+
+  // Speak each letter sound with ~700ms spacing
+  letters.forEach((_, i) => {
+    const t = setTimeout(() => {
+      if (onLetterHighlight) onLetterHighlight(i);
+      // Speak the letter name as a phonics cue — the word gives natural sound
+      speak(letters[i], { rate: 0.65, pitch: 1.3 });
+    }, i * 800);
+    timeouts.push(t);
+  });
+
+  // After all letters, pause then say the full word
+  const blendDelay = letters.length * 800 + 500;
+  const t1 = setTimeout(() => {
+    if (onLetterHighlight) onLetterHighlight(-1); // clear highlight
+    // Small blending tone
+    tone({ freq: 440, duration: 0.08, type: 'sine', gain: 0.08 });
+  }, blendDelay);
+  timeouts.push(t1);
+
+  const t2 = setTimeout(() => {
+    speak(word, { rate: 0.78, pitch: 1.2 });
+    if (onWordSpoken) onWordSpoken();
+  }, blendDelay + 300);
+  timeouts.push(t2);
+
+  return () => timeouts.forEach(clearTimeout);
+}

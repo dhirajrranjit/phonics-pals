@@ -2,12 +2,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SoundGame from './components/SoundGame.jsx';
+import BlendGame from './components/BlendGame.jsx';
 import StickerBook from './components/StickerBook.jsx';
 import StickerReveal from './components/StickerReveal.jsx';
 import { say, playTap, playFanfare, cancelSpeech } from './utils/audio.js';
-import { awardStickers, getCollectedCount, TOTAL_STICKER_COUNT } from './utils/stickers.js';
+import { awardStickers, getCollectedCount, getSessionCount, TOTAL_STICKER_COUNT } from './utils/stickers.js';
 
-const SCREENS = { START: 'start', PLAY: 'play', END: 'end' };
+const SCREENS = { START: 'start', PLAY: 'play', BLEND: 'blend', END: 'end' };
+const BLEND_UNLOCK_SESSIONS = 3; // sessions needed to unlock blending
 
 export default function App() {
   const [screen, setScreen] = useState(SCREENS.START);
@@ -15,6 +17,8 @@ export default function App() {
   const [showStickerBook, setShowStickerBook] = useState(false);
   const [awardedStickers, setAwardedStickers] = useState([]);
   const [collectedCount, setCollectedCount] = useState(getCollectedCount());
+  const [sessionCount, setSessionCount] = useState(getSessionCount());
+  const blendUnlocked = sessionCount >= BLEND_UNLOCK_SESSIONS;
 
   // Decorative background blobs — generated once, slow-floating.
   const blobs = useMemo(
@@ -41,6 +45,13 @@ export default function App() {
     setScreen(SCREENS.PLAY);
   };
 
+  const handleStartBlend = () => {
+    playTap();
+    cancelSpeech();
+    setAwardedStickers([]);
+    setScreen(SCREENS.BLEND);
+  };
+
   const handleFinish = ({ score, total }) => {
     setResult({ score, total });
 
@@ -48,6 +59,7 @@ export default function App() {
     const newStickers = awardStickers(score, total);
     setAwardedStickers(newStickers);
     setCollectedCount(getCollectedCount());
+    setSessionCount(getSessionCount());
 
     setScreen(SCREENS.END);
     // Tiny delay so transition lands first
@@ -127,6 +139,17 @@ export default function App() {
               <SoundGame onFinish={handleFinish} />
             </motion.div>
           )}
+          {screen === SCREENS.BLEND && (
+            <motion.div
+              key="blend"
+              style={{ display: 'contents' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <BlendGame onFinish={handleFinish} />
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
 
@@ -166,6 +189,21 @@ export default function App() {
                 aria-label="Start playing"
               >
                 PLAY ▶
+              </motion.button>
+
+              {/* Blend mode button */}
+              <motion.button
+                type="button"
+                className="start-blend-btn"
+                onClick={blendUnlocked ? handleStartBlend : undefined}
+                disabled={!blendUnlocked}
+                whileTap={blendUnlocked ? { scale: 0.93, y: 3 } : {}}
+                aria-label={blendUnlocked ? 'Play blending game' : `Blending unlocks after ${BLEND_UNLOCK_SESSIONS} games`}
+                title={blendUnlocked ? '' : `Play ${BLEND_UNLOCK_SESSIONS - sessionCount} more game${BLEND_UNLOCK_SESSIONS - sessionCount === 1 ? '' : 's'} to unlock`}
+              >
+                {!blendUnlocked && <span className="lock-icon" aria-hidden="true">🔒</span>}
+                <span>BLEND</span>
+                {blendUnlocked && <span aria-hidden="true">🔤</span>}
               </motion.button>
 
               {/* Sticker book button */}

@@ -815,3 +815,135 @@ body {
   border: 2px solid var(--ink);
   letter-spacing: 0.5px;
 }
+
+/* ============================================
+   Blend Game
+   ============================================ */
+
+.blend-stage {
+  justify-content: center;
+  gap: clamp(16px, 3vh, 32px) !important;
+}
+
+/* Letter tiles row */
+.blend-letters {
+  display: flex;
+  gap: clamp(10px, 2.5vw, 20px);
+  justify-content: center;
+  align-items: center;
+}
+
+.blend-tile {
+  width: clamp(80px, 18vw, 130px);
+  height: clamp(90px, 20vw, 140px);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: clamp(48px, 10vw, 80px);
+  color: var(--ink);
+  background: var(--cream);
+  border: 6px solid var(--ink);
+  border-radius: 22px;
+  box-shadow: var(--shadow-deep);
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+.blend-tile.active {
+  background: var(--sun);
+  color: var(--berry);
+  box-shadow: 0 0 0 6px rgba(255, 217, 61, 0.4), var(--shadow-deep);
+}
+
+/* Revealed word */
+.blend-word-reveal {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 24px;
+  background: var(--cream);
+  border: 4px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: var(--shadow-soft);
+}
+
+.blend-word-emoji {
+  font-size: clamp(36px, 6vh, 56px);
+}
+
+.blend-word-text {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 5vh, 44px);
+  color: var(--berry);
+  text-shadow: 0 3px 0 var(--sun);
+}
+
+/* Picture choices */
+.blend-choices {
+  display: flex;
+  gap: clamp(10px, 2.5vw, 20px);
+  justify-content: center;
+}
+
+.blend-choice {
+  width: clamp(90px, 22vw, 140px);
+  height: clamp(90px, 22vw, 140px);
+  display: grid;
+  place-items: center;
+  background: var(--cream);
+  border: 6px solid var(--ink);
+  border-radius: 28px;
+  box-shadow: var(--shadow-deep);
+  cursor: pointer;
+  transition: filter 0.2s ease;
+  position: relative;
+}
+
+.blend-choice:disabled {
+  cursor: default;
+  filter: saturate(0.6) brightness(0.92);
+}
+
+.blend-choice.correct {
+  background: var(--grass) !important;
+  filter: none !important;
+}
+
+.blend-choice-emoji {
+  font-size: clamp(44px, 10vw, 68px);
+  filter: drop-shadow(0 4px 0 rgba(0,0,0,0.12));
+}
+
+/* Start screen blend button */
+.start-blend-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 12px 28px;
+  border-radius: 999px;
+  background: var(--grape);
+  border: 4px solid var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(16px, 2.5vh, 22px);
+  color: var(--cream);
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  text-shadow: 0 2px 0 rgba(0,0,0,0.15);
+  transition: transform 0.1s ease;
+}
+
+.start-blend-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 4px 0 rgba(43, 45, 66, 0.18);
+}
+
+.start-blend-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  filter: grayscale(0.6);
+}
+
+.start-blend-btn .lock-icon {
+  font-size: 1.1em;
+  filter: none;
+}
