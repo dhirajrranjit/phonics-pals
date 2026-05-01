@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import ImageCard from './ImageCard.jsx';
 import LetterButton from './LetterButton.jsx';
+import LetterTracer from './LetterTracer.jsx';
 import wordsData from '../data/words.js';
 import {
   preloadHowls,
@@ -72,6 +73,7 @@ export default function SoundGame({ onFinish }) {
   const [revealCorrect, setRevealCorrect] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [showTracer, setShowTracer] = useState(false);
 
   // Per-round state: shuffled options so the correct letter isn't always first.
   const current = roundQueue[roundIdx];
@@ -114,6 +116,7 @@ export default function SoundGame({ onFinish }) {
     setRevealCorrect(false);
     setCelebrate(false);
     setLocked(false);
+    setShowTracer(false);
 
     // Tiny delay so the swap animation lands first.
     const t = addTimeout(() => {
@@ -145,13 +148,9 @@ export default function SoundGame({ onFinish }) {
           playWord(current.wordSound, current.word, current.correct);
         }, 480);
 
-        // Advance.
+        // Show the letter tracer after the celebration.
         addTimeout(() => {
-          if (roundIdx + 1 >= TOTAL_ROUNDS) {
-            onFinish({ score: score + 1, total: TOTAL_ROUNDS });
-          } else {
-            setRoundIdx((i) => i + 1);
-          }
+          setShowTracer(true);
         }, NEXT_DELAY_MS);
       } else {
         // ❌ Wrong — gentle, no negative messaging.
@@ -166,6 +165,17 @@ export default function SoundGame({ onFinish }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [current, locked, roundIdx, score]
   );
+
+  // Called when the child finishes tracing (or skips).
+  const handleTracingComplete = useCallback(() => {
+    setShowTracer(false);
+    if (roundIdx + 1 >= TOTAL_ROUNDS) {
+      onFinish({ score, total: TOTAL_ROUNDS });
+    } else {
+      setRoundIdx((i) => i + 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roundIdx, score]);
 
   if (!current) return null;
 
@@ -235,7 +245,7 @@ export default function SoundGame({ onFinish }) {
 
       {/* Celebration confetti overlay */}
       <AnimatePresence>
-        {celebrate && (
+        {celebrate && !showTracer && (
           <div className="celebrate" aria-hidden="true">
             {confetti.map((c) => (
               <motion.span
@@ -253,6 +263,18 @@ export default function SoundGame({ onFinish }) {
               </motion.span>
             ))}
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Letter tracing overlay — appears after correct answer */}
+      <AnimatePresence>
+        {showTracer && (
+          <LetterTracer
+            key={`tracer-${roundIdx}`}
+            letter={current.correct}
+            word={current.word}
+            onComplete={handleTracingComplete}
+          />
         )}
       </AnimatePresence>
     </>
